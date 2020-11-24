@@ -4,7 +4,7 @@ envVars = ['BD2020TOKEN',
     'HOST',
     'DBNAME',
     'USER',
-    'PORT',
+    'MYPORT',
     'PWBD']
 
 for env in envVars:
