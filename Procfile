@@ -1,1 +1,1 @@
-worker: python testEnvVars.py
+worker: python bot.py
