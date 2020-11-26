@@ -23,7 +23,7 @@ def start(update: Update, context: CallbackContext) -> None:
     return AUTH
 
 def pwdWrong(update: Update, context: CallbackContext) -> None:
-    msg = "Digistate a senha errada para o password, tente novamente"
+    msg = "Digitaste a senha errada para o password, tente novamente"
     context.bot.send_message(chat_id=update.effective_chat.id,text=msg)
     return AUTH
 
@@ -68,12 +68,24 @@ def crudInline(update: Update, context: CallbackContext) -> None:
     query.edit_message_reply_markup(kbLayout)
     return SECOND
 
+def colunasFromTable(tablename):
+    colunas = None
+    if tablename == 'musica':
+        colunas = ['nome','ano','duracaosegundos','plays','genero']
+    elif tablename == 'playlist':
+        colunas = ['nome','descricao','horainicio']
+    elif tablename == 'grupomusical':
+        colunas = ['nome','biografia','origem']
+    return colunas
+
 def modifyData(update: Update, context: CallbackContext) -> None:    
     query = update.callback_query
     query.answer()
     table, operation = query.data.split("_")
     query.edit_message_text(text=f'Aqui teremos instruções de como fazer a operação <b>{operation}</b> na tabela <b>{table}</b>',parse_mode="HTML")
 
+
+    
     inlineOp = [[_kbbutton("Voltar",f'{table}_voltar')]]
     kbLayout = InlineKeyboardMarkup(inlineOp)
     query.edit_message_reply_markup(reply_markup=kbLayout)
