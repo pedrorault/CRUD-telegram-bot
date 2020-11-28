@@ -11,7 +11,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 def main():  
     _botToken = os.getenv('BD2020TOKEN')
-    updater = Updater(token=_botToken, use_context=True)
+    updater = Updater(token =_botToken, use_context=True)
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(conv_handler)

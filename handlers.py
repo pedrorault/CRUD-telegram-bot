@@ -3,12 +3,13 @@ from telegram.ext import CallbackQueryHandler, CallbackContext, ConversationHand
 from telegram.ext.commandhandler import CommandHandler
 import os
 from dotenv import load_dotenv
+from crudTelegram import *
 
 if not os.getenv('PWBDTELEGRAM'):
     load_dotenv()
 
 #STATES
-AUTH, FIRST, SECOND, THIRD = range(4)
+AUTH, FIRST, SECOND, THIRD, VALUE1 = range(5)
 
 #callback_data
 #Direto nas coisas
@@ -18,8 +19,7 @@ def _kbbutton(name,cb):
 
 def start(update: Update, context: CallbackContext) -> None: 
     msg = "Favor entrar com a senha para fazer alterações no bd"
-    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
-
+    context.bot.send_message(chat_id=update.effective_chat.id, text=msg)    
     return AUTH
 
 def pwdWrong(update: Update, context: CallbackContext) -> None:
@@ -66,32 +66,9 @@ def crudInline(update: Update, context: CallbackContext) -> None:
 
     query.edit_message_text(text=msg, parse_mode="HTML")
     query.edit_message_reply_markup(kbLayout)
+    context.chat_data.clear()
+
     return SECOND
-
-def colunasFromTable(tablename):
-    colunas = None
-    if tablename == 'musica':
-        colunas = ['nome','ano','duracaosegundos','plays','genero']
-    elif tablename == 'playlist':
-        colunas = ['nome','descricao','horainicio']
-    elif tablename == 'grupomusical':
-        colunas = ['nome','biografia','origem']
-    return colunas
-
-def modifyData(update: Update, context: CallbackContext) -> None:    
-    query = update.callback_query
-    query.answer()
-    table, operation = query.data.split("_")
-    query.edit_message_text(text=f'Aqui teremos instruções de como fazer a operação <b>{operation}</b> na tabela <b>{table}</b>',parse_mode="HTML")
-
-
-    
-    inlineOp = [[_kbbutton("Voltar",f'{table}_voltar')]]
-    kbLayout = InlineKeyboardMarkup(inlineOp)
-    query.edit_message_reply_markup(reply_markup=kbLayout)
-
-    return THIRD
-
 
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler('start',start)],
@@ -99,7 +76,6 @@ conv_handler = ConversationHandler(
         AUTH: [
             MessageHandler((Filters.regex(f'^{os.getenv("PWBDTELEGRAM")}$')),tablesInline),
             MessageHandler((~ Filters.text | ~ Filters.regex(f'^{os.getenv("PWBDTELEGRAM")}$')),pwdWrong),
-
         ],
         FIRST: [
             CallbackQueryHandler(crudInline, pattern=f'^musica$'),
@@ -107,12 +83,30 @@ conv_handler = ConversationHandler(
             CallbackQueryHandler(crudInline, pattern=f'^grupomusical$'),
         ],
         SECOND: [
-            CallbackQueryHandler(modifyData, pattern=f'^(.*)_(create|read|update|delete)$'),         
-            CallbackQueryHandler(tablesInline, pattern=f'^voltar$'),
-
+            # CallbackQueryHandler(modifyData, pattern=f'^(.*)_(create|read|update|delete)$'),  
+            # CallbackQueryHandler(createData, pattern=f'^(.*)_create$'),  
+            CallbackQueryHandler(createData, pattern=f'^(.*)_(create|update)$'),  
+            CallbackQueryHandler(tablesInline, pattern=f'^voltar$'),  
+            CallbackQueryHandler(deleteData, pattern=f'^(.*)_delete$'),   
+        ],
+        VALUE1: [
+            MessageHandler(Filters.regex(".+"),receiveCreateData),
+            CallbackQueryHandler(crudInline, pattern=f'^(.*)_cancel$'), #TODO: trocar pra crud,
+            CallbackQueryHandler(createData, pattern=f'^(.*)_proximo$'),
+            CallbackQueryHandler(createData, pattern=f'^(.*)_anterior$'),
+            CallbackQueryHandler(sendData, pattern=f'^(.*)_enviar$'),
         ],
         THIRD: [
             CallbackQueryHandler(crudInline, pattern=f'^(.*)_voltar$'),
+        ],
+        SUBMIT: [
+            CallbackQueryHandler(crudInline, pattern=f'^(.*)_voltar$'),
+            # CallbackQueryHandler(crudInline, pattern=f'^(.*)_cancel$'), TODO: Sair, _sair
+        ],
+        DELETE:[
+            CallbackQueryHandler(crudInline, pattern=f'^cancel$'),
+            CallbackQueryHandler(deleteData, pattern=f'^(.*)_enviar$'),
+            MessageHandler(Filters.regex(".+"),receiveDeleteData)            
         ]
     },
     
