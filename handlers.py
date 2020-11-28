@@ -29,14 +29,16 @@ def pwdWrong(update: Update, context: CallbackContext) -> None:
 
 def tablesInline(update: Update, context: CallbackContext) -> None:
     inlineOp = [ 
-        [_kbbutton("Música",'musica'),_kbbutton("Playlist",'playlist'),_kbbutton("Grupo Musical",'grupomusical') ]
-    ]
+            [_kbbutton("Música",'musica'),
+            _kbbutton("Playlist",'playlist'),
+            _kbbutton("Grupo Musical",'grupomusical')]
+        ]
     kbLayout = InlineKeyboardMarkup(inlineOp)
     msg = "Escolha uma das tabelas para fazer alterações no banco de dados."
+
     try:
         qr = update.callback_query
         qr.answer()
-
         qr.edit_message_text(text=msg)
         qr.edit_message_reply_markup(kbLayout)
     except AttributeError:
@@ -50,10 +52,11 @@ def crudInline(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     query.answer()
 
-    if "_" in query.data:
-        table = query.data.split("_")[0]
-    else:
-        table = query.data
+    context.chat_data.clear() #Reset o dicionario 
+    table = query.data.split("_")[0] if "_" in query.data else query.data
+    context.chat_data["table"] = table
+    context.chat_data["arg"] = 0
+    context.chat_data["query"] = {}
 
     msg = f'Escolha uma das opções para fazer alterações na <b>Tabela {table}</b> do banco de dados.'
 
@@ -63,10 +66,8 @@ def crudInline(update: Update, context: CallbackContext) -> None:
         [_kbbutton("Voltar",'voltar')]
     ]
     kbLayout = InlineKeyboardMarkup(inlineOp)
-
     query.edit_message_text(text=msg, parse_mode="HTML")
     query.edit_message_reply_markup(kbLayout)
-    context.chat_data.clear()
 
     return SECOND
 
@@ -105,7 +106,9 @@ conv_handler = ConversationHandler(
         ],
         DELETE:[
             CallbackQueryHandler(crudInline, pattern=f'^cancel$'),
-            CallbackQueryHandler(deleteData, pattern=f'^(.*)_enviar$'),
+            CallbackQueryHandler(sendData, pattern=f'^(.*)_enviar$'),
+            CallbackQueryHandler(deleteData, pattern=f'^(.*)_proximo$'),
+            CallbackQueryHandler(deleteData, pattern=f'^(.*)_anterior$'),
             MessageHandler(Filters.regex(".+"),receiveDeleteData)            
         ]
     },

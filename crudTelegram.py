@@ -1,7 +1,6 @@
 import os
 from telegram import InlineKeyboardButton,InlineKeyboardMarkup, Update
-from telegram import replymarkup
-from telegram.ext import  CallbackContext, ConversationHandler
+from telegram.ext import  CallbackContext
 from dotenv import load_dotenv
 import logging
 import crudDB
@@ -41,14 +40,14 @@ def _opcoesInlineArguments(arg,colunas,table):
         ]
     elif arg == len(colunas)-1:
         return [ 
-            [_kbbutton("Enviar",f'{table}_{colunas[arg]}_enviar'),
-            _kbbutton("Anterior",f'{table}_{colunas[arg]}_anterior'),
+            [_kbbutton("Enviar",f'{table}_enviar'),
+            _kbbutton("Anterior",f'{table}_anterior'),
             _kbbutton("Cancelar",f'{table}_cancel') ],  
         ]
     else:
         return [ 
-            [_kbbutton("Anterior",f'{table}_{colunas[arg]}_anterior'),
-            _kbbutton("Próximo",f'{table}_{colunas[arg]}_proximo'),
+            [_kbbutton("Anterior",f'{table}_anterior'),
+            _kbbutton("Próximo",f'{table}_proximo'),
             _kbbutton("Cancelar",f'{table}_cancel') ],  
         ]
 
@@ -56,39 +55,24 @@ def createData(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     query.answer()
 
-    if query.data.count("_") == 2:
-        table, arg, action = query.data.split("_")
-    else:
-        table, action = query.data.split("_")
-
     data = context.chat_data
-    argSql = None
-    operation = None
+    table = data["table"]
 
-    if action == "update":
-        operation = action
-    elif "operation" in data.keys() and data["operation"] == "update":
-        operation = data["operation"]
+    _,action = query.data.split("_")
+    data["operation"] = action if action in ['create','update'] else data["operation"]
+    colunas = _colunasFromTable(tablename=table, operation=data["operation"])
 
-    colunas = _colunasFromTable(tablename=table, operation=operation)
+    addToArg = +1 if action == "proximo" else -1 if action == "anterior" else 0 
+    data["arg"] += addToArg
 
-    if "arg" not in data.keys():
-        argSql = colunas[0]
-        data["arg"] = 0
-        data["table"] = table
-        data["query"] = {}
-        data["operation"] = action
-    else:
-        print(colunas, data["arg"])
-        if action == "proximo":
-            data["arg"] += 1
-            argSql = colunas[data["arg"]]            
-        elif action == "anterior":
-            data["arg"] -= 1
-            argSql = colunas[data["arg"]]     
-    data["query"][argSql] = ""
+    colunaAtual = colunas[data["arg"]]  
+    if colunaAtual not in data["query"].keys():  
+        data["query"][colunaAtual] = ""
 
-    msg = f'Insira a coluna <b>{argSql}</b> da tabela <b>{table}</b>.\nEnvie a mensagem para salvar.\nRe-envie para sobreescrever.\nClique em Enviar para cadastrar os dados.'
+    msg = f'Insira a coluna <b>{colunaAtual}</b> da tabela <b>{table}</b>.'
+    msg2 = "\nEnvie a mensagem para salvar.\nRe-envie para sobreescrever.\nClique em Enviar para cadastrar os dados."
+    msg = msg+msg2 if data["arg"] == 0 else msg
+
     inlineOp = _opcoesInlineArguments(data["arg"], colunas, table)
 
     kbLayout = InlineKeyboardMarkup(inlineOp)
@@ -97,7 +81,6 @@ def createData(update: Update, context: CallbackContext) -> None:
     return VALUE1
 
 def receiveCreateData(update: Update, context: CallbackContext) -> None:
-    #TODO: talvez mudar essa merda pra poder ter return values diferentes
     data = context.chat_data
     table = data["table"]
     arg = data["arg"]
@@ -107,7 +90,7 @@ def receiveCreateData(update: Update, context: CallbackContext) -> None:
     return VALUE1
 
 def sendData(update: Update, context: CallbackContext) -> None:
-    print(context.chat_data)
+    # print(context.chat_data)
     query = update.callback_query
     query.answer()
     chatData = context.chat_data
@@ -123,11 +106,11 @@ def sendData(update: Update, context: CallbackContext) -> None:
     query.edit_message_text(text=msg,parse_mode="HTML")
 
     inlineOp= [ [_kbbutton("Voltar",f'{chatData["table"]}_voltar')] ]
-    if result.startswith("Erro"):
-        print("Deu erro viu minha flor")
+    # if result.startswith("Erro"):
+        # print("Deu erro viu minha flor")
         #chatData["arg"] = 0
         # table_algo, igual da primeira
-        pass #add button pra voltar pro começo da inserção
+         #add button pra voltar pro começo da inserção
     kb = InlineKeyboardMarkup(inlineOp)
     context.bot.send_message(chat_id=update.effective_chat.id,text=result,reply_markup=kb)
 
@@ -150,32 +133,65 @@ def deleteData(update: Update, context: CallbackContext) -> None:
     query.answer()
     table, operation = query.data.split("_")
 
+    data = context.chat_data
+    table = data["table"]
+    data["operation"] = operation if operation in ['delete'] else data["operation"]
+
+    addToArg = +1 if operation == "proximo" else -1 if operation == "anterior" else 0 
+    data["arg"] += addToArg
+
+
     if table != "musica":
-        msg = f'Digite o nome da tabela {table} que deseja deletar'
+        msg = f'Digite o <b>nome</b> da tabela <b>{table}</b> que deseja deletar'
         inlineOp = [ [_kbbutton("Enviar",f'{table}_enviar'), _kbbutton("Cancelar",'cancel') ]]
         kb = InlineKeyboardMarkup(inlineOp)
-        query.edit_message_text(text=msg,reply_markup=kb)
+        query.edit_message_text(text=msg,parse_mode="HTML")
+        query.edit_message_reply_markup(reply_markup=kb)
+    else:
+        if data["arg"] == 0:
+            msg = f'Digite e envie o <b>nome</b> da música que deseja deletar'
+            inlineOp = [ [_kbbutton("Próximo",f'{table}_proximo'), 
+                    _kbbutton("Cancelar",'cancel') ]]
+            kb = InlineKeyboardMarkup(inlineOp)
+            query.edit_message_text(text=msg,parse_mode="HTML")  
+            query.edit_message_reply_markup(reply_markup=kb)
+
+        elif data["arg"] == 1:
+            msg = f'Digite e envie o <b>nome</b> da <b>banda</b> que deseja deletar a música'
+            inlineOp = [ [_kbbutton("Enviar",f'{table}_enviar'), 
+                    _kbbutton("Anterior",f'{table}_anterior'),
+                    _kbbutton("Cancelar",'cancel') ]]
+            kb = InlineKeyboardMarkup(inlineOp)
+            query.edit_message_text(text=msg,parse_mode="HTML")
+            query.edit_message_reply_markup(reply_markup=kb)
+
     return DELETE
 
+
 def receiveDeleteData(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    query.answer()
-    context.chat_data["query"] = {}
-    context.chat_data["query"]["nome"] = update.message.text
+    data = context.chat_data
+    if "query" not in data.keys():
+        data["query"] = {}
+    if data["table"] != "musica":
+        data["query"]["nome"] = update.message.text
+    else:
+        if data["arg"] == 0:
+            data["query"]["nome"] = update.message.text
+        elif data["arg"] == 1:
+            data["query"]["banda"] = update.message.text
     return DELETE
-    #TODO: tratar esse caso na função crud e ver o handler
 
 def conexaoDB(operation, tablename, data):
     result = None    
     conn = crudDB.Conexao()
     cur = conn.cur
+
     if tablename == 'grupomusical':
         try:
-            nome = emptyToNone(data["nome"]) 
-            bio = emptyToNone(data["biografia"]) 
-            origem = emptyToNone(data["origem"]) 
-
+            nome = emptyToNone(data["nome"])
             if operation == 'create':
+                bio = emptyToNone(data["biografia"]) 
+                origem = emptyToNone(data["origem"]) 
                 if isAnyEmpty(data):
                     conn.close()
                     return "Erro: Os dados não foram inseridos completamente!"
@@ -183,26 +199,31 @@ def conexaoDB(operation, tablename, data):
                     nome,bio,origem )
             elif operation == 'update':
                 where = data[msgUpdate]
+                bio = emptyToNone(data["biografia"]) 
+                origem = emptyToNone(data["origem"]) 
                 if where.strip() == '':
                     conn.close()
                     return "Erro: Não foi submetida o nome da entrada que deseja alterar" 
                 result = crudDB.GrupoMusical(cur).updateGrupoMusical(where,nome,bio,origem)
                 pass
             elif operation == 'delete':
-                pass
+                if isAnyEmpty(data):
+                    conn.close()
+                    return "Erro: Não foi inserido o nome do grupo que será deletado!"
+                result = crudDB.GrupoMusical(cur).deleteGrupoMusical(nome) 
             elif operation == 'read':
                 pass
-        except:
+        except :
             return "Erro: Os dados não foram inseridos corretamente!"
     elif tablename == 'musica':
         nome = emptyToNone(data["nome"])
-        ano = emptyToNone(data["ano"])
-        duracao = emptyToNone(data["duracaosegundos"])
-        plays = emptyToNone(data["plays"])
-        genero = emptyToNone(data["genero"])
-        nomeBanda = emptyToNone(data["nome da banda"])
 
         if operation == 'create':
+            ano = emptyToNone(data["ano"])
+            duracao = emptyToNone(data["duracaosegundos"])
+            plays = emptyToNone(data["plays"])
+            genero = emptyToNone(data["genero"])
+            nomeBanda = emptyToNone(data["nome da banda"])
             if isAnyEmpty(data):
                 conn.close()
                 return "Erro: Os dados não foram inseridos completamente!"
@@ -216,7 +237,12 @@ def conexaoDB(operation, tablename, data):
                 nome,ano,duracao,plays,genero,nomeBanda
             )
         elif operation == 'update':
-            where = data[msgUpdate]     
+            where = data[msgUpdate]   
+            ano = emptyToNone(data["ano"])
+            duracao = emptyToNone(data["duracaosegundos"])
+            plays = emptyToNone(data["plays"])
+            genero = emptyToNone(data["genero"])
+            nomeBanda = emptyToNone(data["nome da banda"])  
             if where.strip() == '' or not nomeBanda:
                 conn.close()
                 return "Erro: Não foi submetida o nome da música ou o nome da banda que deseja alterar" 
@@ -228,7 +254,12 @@ def conexaoDB(operation, tablename, data):
                 return "Erro: Os dados numéricos não foram inseridos adequadamente"
             result = crudDB.Musica(cur).updateMusica(where,nome,ano,duracao,plays,genero,nomeBanda)
         elif operation == 'delete':
-            pass
+            #TODO: Pedir também o nome da banda            
+            if isAnyEmpty(data):
+                conn.close()
+                return "Erro: Não foi inserido o nome da música que será deletada!"
+            banda = emptyToNone(data["banda"])
+            result = crudDB.Musica(cur).deleteMusica(nome,banda) 
         elif operation == 'read':
             pass            
 
@@ -236,30 +267,35 @@ def conexaoDB(operation, tablename, data):
     elif tablename == 'playlist':
         try:
             nome = emptyToNone(data["nome"])
-            descricao = emptyToNone(data["descricao"])
-            horainicio = emptyToNone(data["horainicio"])
-
             if operation == 'create':
+                descricao = emptyToNone(data["descricao"])
+                horainicio = emptyToNone(data["horainicio"])
                 if isAnyEmpty(data):
                     conn.close()
                     return "Erro: Os dados não foram inseridos completamente!" 
-                if (horainicio and re.match(r"^(2[0-3]|[01]?[0-9]):([0-5]?[0-9])$",horainicio)) or not horainicio:              
+                if (horainicio and re.match(r"^(2[0-3]|[01]?[0-9]):([0-5]?[0-9])$",horainicio)):              
                     result = crudDB.Playlist(cur).createPlaylist(
                         nome,descricao,horainicio )
+                else:
+                    return "Erro: A hora deve ter formato como 00:00 ou 23:59"  
             elif operation == 'update':
                 where = data[msgUpdate]
+                descricao = emptyToNone(data["descricao"])
+                horainicio = emptyToNone(data["horainicio"])
+
                 if where.strip() == '':
                     conn.close()
                     return "Erro: Não foi submetida o nome da entrada que deseja alterar" 
-                print("Hora inicio ", horainicio)
                 if (horainicio and re.match(r"^(2[0-3]|[01]?[0-9]):([0-5]?[0-9])$",horainicio)) or not horainicio:                
                     result = crudDB.Playlist(cur).updatePlaylist(where,nome,descricao,horainicio) 
                 else:
                     conn.close()
-                    return "Erro: A hora deve ter formato como 00:00 ou 23:59"           
-                
+                    return "Erro: A hora deve ter formato como 00:00 ou 23:59"    
             elif operation == 'delete':
-                pass
+                if isAnyEmpty(data):
+                    conn.close()
+                    return "Erro: Não foi inserido o nome da playlist que será deletada!"
+                result = crudDB.Playlist(cur).deletePlaylist(nome)
             elif operation == 'read':
                 pass
         except Exception:

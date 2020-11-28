@@ -4,46 +4,6 @@ from dotenv import load_dotenv
 if not os.getenv('MYPORT'):
     load_dotenv()
 
-class Pessoa():
-    def __init__(self, cur):
-        self.cur = cur
-
-    def createPessoa(self, cpf, name, phone, email):
-        commandString = "INSERT INTO pessoa(cpf,nome,telefone,email) VALUES (%s, %s, %s, %s);"
-        try:
-            self.cur.execute(commandString, (cpf, name, phone, email))
-        except:
-            return("Erro: CPF ja cadastrado!")
-
-    def readPessoa(self, cpf):
-        commandString =  "SELECT * FROM pessoa WHERE cpf = %s;"
-        try:
-            self.cur.execute(commandString, (cpf))
-            query = self.cur.fetchall()
-            # print("IdPessoa: ", query[0][0])
-            # print("CPF: ", query[0][1])
-            # print("Nome: ", query[0][2])
-            # print("Telefone: ", query[0][3])
-            # print("Email: ", query[0][4])
-            return(query)
-        except:
-            return("Erro: CPF não encontrado!")
-
-    def updatePessoa(self, cpf, newName, newPhone, newEmail):
-        commandString = "UPDATE pessoa SET nome = %s, telefone = %s, email = %s WHERE cpf = %s;"
-        try:
-            self.cur.execute(commandString, (newName, newPhone, newEmail, cpf))
-        except:
-            return("Erro: CPF não encontrado para a atualização!")
-
-    def deletePessoa(self, cpf):
-        commandString = "DELETE FROM pessoa WHERE cpf = %s;"
-        try:
-            self.cur.execute(commandString, cpf)
-            return("Usuario deletado com sucesso!")
-        except:
-            return("Erro: CPF não encontrado!")
-
 class GrupoMusical():
     def __init__(self, cur):
         self.cur = cur
@@ -104,7 +64,10 @@ class GrupoMusical():
         commandString = "DELETE FROM grupomusical WHERE nome = %s;"
         try:
             self.cur.execute(commandString, (name, ))
-            return("Grupo Musical deletado com sucesso!")
+            if(self.cur.statusmessage.endswith("1")):
+                return("Grupo Musical deletado com sucesso!")
+            else:
+                return("Erro: Grupo Musical não encontrado!")
         except:
             return("Erro: Grupo Musical não encontrado!")
 
@@ -167,8 +130,11 @@ class Playlist():
         commandString = "DELETE FROM playlist WHERE nome = %s;"
         try:
             self.cur.execute(commandString, (name, ))
-            return("Playlist deletada com sucesso")
-        except:
+            if(self.cur.statusmessage.endswith("1")):
+                return("Playlist deletada com sucesso!")
+            else:
+                return("Erro: Playlist não encontrada!")            
+        except Exception as e:
             return("Erro: Playlist não encontrada")
 
 class Musica():
@@ -237,7 +203,7 @@ class Musica():
         # commandString = "UPDATE musica SET nome = %s, ano = %s, duracaosegundos = %s, plays = %s, genero = %s, fk_grupomusical_idgrupomusical = %s WHERE nome = %s;"
         commandStringGrupoMusical = "SELECT * FROM grupomusical WHERE nome = %s LIMIT 1;"
         commandString= """
-         UPDATE musica SET
+        UPDATE musica SET
             nome = COALESCE(%(nome)s,nome),
             ano = COALESCE(%(ano)s,ano),
             duracaosegundos = COALESCE(%(duracao)s,duracaosegundos),
@@ -252,7 +218,7 @@ class Musica():
             %(plays)s IS NOT NULL AND %(plays)s IS DISTINCT FROM plays OR
             %(genero)s IS NOT NULL AND %(genero)s IS DISTINCT FROM genero OR
             %(fk)s IS NOT NULL AND %(fk)s IS DISTINCT FROM fk_grupomusical_idgrupomusical
- );
+        );
         """
         try:
             self.cur.execute(commandStringGrupoMusical, (nameGrupoMusical, ))            
@@ -270,11 +236,21 @@ class Musica():
         except:
             return("Erro: Grupo Musical não encontrado")
 
-    def deleteMusica(self, name):
-        commandString = "DELETE FROM musica WHERE nome = %s;"
+    def deleteMusica(self, name, banda):
+        # commandString = "DELETE FROM musica WHERE nome = %s;"
+        cm = """DELETE FROM musica USING grupomusical
+                WHERE 
+                    musica.fk_grupomusical_idgrupomusical = grupomusical.idgrupomusical
+                AND musica.nome = %s
+                AND grupomusical.nome = %s;   
+        """
         try:
-            self.cur.execute(commandString, (name, ))
-            return("Musica deletada com sucesso")
+            # self.cur.execute(commandString, (name, ))
+            self.cur.execute(cm, (name,banda, ))
+            if(self.cur.statusmessage.endswith("1")):
+                return("Música deletada com sucesso!")
+            else:
+                return("Erro: Música ou banda não encontrada!")
         except:
             return("Erro: Musica não encontrada")
 
@@ -335,9 +311,12 @@ class PlaylistCompostaPorMusica():
         commandString = "DELETE FROM playlistcompostapormusica WHERE fk_playlist_idplaylist = %s AND fk_musica_idmusica = %s;"
         try:
             self.cur.execute(commandString, (idPlaylist, idMusic))
-            return("Musica removida da playlist com sucesso")
+            if(self.cur.statusmessage.endswith("1")):
+                return("Música removida da playlist com sucesso")
+            else:
+                return("Erro: Música ou playlist não encontrada!")
         except:
-            return("Erro: Musica não encontrada na playlist")
+            return("Erro: Música não encontrada na playlist")
 
 class Conexao():
     def __init__(self):
@@ -350,7 +329,7 @@ class Conexao():
             self._conn = psycopg2.connect(dbinfo)
             self._conn.autocommit = True
             self._conn.set_client_encoding('UTF8')            
-            print("Conectado ao bd!")
+            # print("Conectado ao bd!")
             return self._conn.cursor()
         except Exception as e:
             print(e)
@@ -362,5 +341,5 @@ class Conexao():
 if __name__ == "__main__":
     a = Conexao()
     b = a.cur
-    gm = Musica(b)
-    print(gm.createMusica("Oxe","2020","100","10","POP","Exalta"))
+    gm = GrupoMusical(b)
+    print(gm.deleteGrupoMusical("Lexuss 210"))
