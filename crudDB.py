@@ -55,7 +55,10 @@ class GrupoMusical():
         try:
             # self.cur.execute(commandString, (newName, biography, origin, where))
             self.cur.execute(commandString, {'nome':newName, 'biografia':biography, 'origem':origin, 'where':where})
-            return("Grupo Musical atualizado com sucesso")
+            if(self.cur.statusmessage.endswith("1")):            
+                return("Grupo Musical atualizado com sucesso")
+            else:
+                return("Erro: Grupo Musical não encontrado")
         except Exception as e:
             print(e)
             return("Erro: Grupo Musical não encontrado")
@@ -122,7 +125,10 @@ class Playlist():
         try:
             # self.cur.execute(commandString, (newName, newBio, newStarTime, where))
             self.cur.execute(commandString, {"nome":newName, "descricao":newBio, "horainicio":newStarTime, "where":where})
-            return("Playlist atualizada com sucesso")
+            if(self.cur.statusmessage.endswith("1")):            
+                return("Playlist atualizada com sucesso")
+            else:
+                return("Erro: Playlist não encontrada")
         except:
             return("Erro: Playlist não encontrada")
 
@@ -228,9 +234,11 @@ class Musica():
                 # self.cur.execute(commandString, (newName, newYear, newDurationSec, newPlays, newGenre, idGrupoMusical, where))
                 self.cur.execute(commandString, 
                 {"nome":newName, "ano":newYear, "duracao":newDurationSec, 
-                "plays":newPlays, "genero":newGenre, "fk":idGrupoMusical, "where":where})
-                
-                return("Musica atualizada com sucesso")
+                "plays":newPlays, "genero":newGenre, "fk":idGrupoMusical, "where":where})                
+                if(self.cur.statusmessage.endswith("1")):
+                    return("Musica atualizada com sucesso")
+                else:
+                    return("Erro: Musica não encontrada")
             except:
                 return("Erro: Musica não encontrada")
         except:
