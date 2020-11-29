@@ -267,12 +267,12 @@ class Musica():
         except:
             return("Erro: Musica não encontrada")
 
-class PlaylistCompostaPorMusica():
+class compostapor2():
     def __init__(self, cur):
         self.cur = cur
 
     def createPlaylistCompostaPorMusica(self, namePlaylist, nameMusic):
-        commandString = "INSERT INTO playlistcompostapormusica(fk_playlist_idplaylist, fk_musica_idmusica) VALUES (%s, %s);"
+        commandString = "INSERT INTO compostapor2(fk_playlist_idplaylist, fk_musica_idmusica) VALUES (%s, %s);"
         commandStringIdPlaylist = "SELECT * FROM playlist WHERE nome = %s LIMIT 1;"
         commandStringIdMusica = "SELECT * FROM Musica WHERE nome = %s LIMIT 1;"
         try:
@@ -308,8 +308,8 @@ class PlaylistCompostaPorMusica():
             print(e)
 
     def updatePlaylistCompostaPorMusica(self, idPlaylist, idMusic, newIdPlaylist, newIdMusic):
-        commandString = "UPDATE playlistcompostapormusica SET fk_playlist_idplaylist = %s, fk_musica_idmusica = %s WHERE fk_playlist_idplaylist = %s AND fk_musica_idmusica = '%s';"
-        commandString = """UPDATE playlistcompostapormusica SET 
+        commandString = "UPDATE compostapor2 SET fk_playlist_idplaylist = %s, fk_musica_idmusica = %s WHERE fk_playlist_idplaylist = %s AND fk_musica_idmusica = '%s';"
+        commandString = """UPDATE compostapor2 SET 
                 fk_playlist_idplaylist = COALESCE(%(fk1)s,fk_playlist_idplaylist), 
                 fk_musica_idmusica = COALESCE(%(fk2)s,fk_musica_idmusica) 
             WHERE fk_playlist_idplaylist = %(fk3)s AND fk_musica_idmusica = %(fk4)s
@@ -322,12 +322,15 @@ class PlaylistCompostaPorMusica():
             # self.cur.execute(commandString, (newIdPlaylist, newIdMusic, idPlaylist, idMusic))
             self.cur.execute(commandString, 
             {"fk1":newIdPlaylist, "fk2":newIdMusic, "fk3":idPlaylist, "fk4":idMusic})
-            return("Playlist atualizada")
+            if(self.cur.statusmessage.endswith("1")):
+                return("Playlist atualizada")
+            else:
+                return("Erro: Playlist não encontrada")
         except:
             return("Erro: Playlist não encontrada")
 
     def deletePlaylistCompostaPorMusica(self, idPlaylist, idMusic):
-        commandString = "DELETE FROM playlistcompostapormusica WHERE fk_playlist_idplaylist = %s AND fk_musica_idmusica = %s;"
+        commandString = "DELETE FROM compostapor2 WHERE fk_playlist_idplaylist = %s AND fk_musica_idmusica = %s;"
         try:
             self.cur.execute(commandString, (idPlaylist, idMusic))
             if(self.cur.statusmessage.endswith("1")):
