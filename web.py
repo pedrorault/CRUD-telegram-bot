@@ -10,4 +10,4 @@ class Redirect(BaseHTTPRequestHandler):
        self.send_header('Location', "t.me/BD2020EACH_Bot")
        self.end_headers()
 
-HTTPServer(("", PORT), Redirect).serve_forever()
+HTTPServer(("", int(PORT)), Redirect).serve_forever()
