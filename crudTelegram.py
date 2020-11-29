@@ -1,10 +1,12 @@
 import os
-from telegram import InlineKeyboardButton,InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton,InlineKeyboardMarkup, Update, constants
 from telegram.ext import  CallbackContext
 from dotenv import load_dotenv
 import logging
 import crudDB
 import re
+import time
+
 
 if not os.getenv('PWBDTELEGRAM'):
     load_dotenv()
@@ -15,6 +17,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 VALUE1 = 4
 SUBMIT= 5
 DELETE = 6
+SELECT = 7
 msgUpdate = "nome que está buscando para modificar"
 
 
@@ -50,6 +53,57 @@ def _opcoesInlineArguments(arg,colunas,table):
             _kbbutton("Próximo",f'{table}_proximo'),
             _kbbutton("Cancelar",f'{table}_cancel') ],  
         ]
+
+def isAnyEmpty(dicionarioData):
+    for x in dicionarioData.values():
+        if not x or x.strip() == '':
+            return True
+    return False
+
+def emptyToNone(data):
+    if data.strip() == '':
+        return None
+    else:
+        return data
+
+def enviarMensagemLonga(bot, chat_id, text: str, reply_markup):
+    #Source: https://github.com/python-telegram-bot/python-telegram-bot/issues/768
+    if len(text) <= constants.MAX_MESSAGE_LENGTH:
+        return bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML",reply_markup=reply_markup)
+    parts = []
+    while len(text) > 0:
+        if len(text) > constants.MAX_MESSAGE_LENGTH:
+            part = text[:constants.MAX_MESSAGE_LENGTH]
+            first_lnbr = part.rfind('\n')
+            if first_lnbr != -1:
+                parts.append(part[:first_lnbr])
+                text = text[(first_lnbr+1):]
+            else:
+                parts.append(part)
+                text = text[constants.MAX_MESSAGE_LENGTH:]
+        else:
+            parts.append(text)
+            break
+    msg = None
+    for part in parts:
+        msg = bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML",reply_markup=reply_markup)
+        time.sleep(1)
+    return msg
+
+def queryToMessage(queryCombo):
+    """Recebe o resultado de um SELECT feito no DB e formata o resultado para
+    ser enviado por mensagem pelo telegram."""
+    colunas = queryCombo[0]
+    query = queryCombo[1]
+    if len(query) != 0:
+        result = ""
+        for row in query:
+            for i, data in enumerate(row):
+                result += f'<b>{colunas[i].capitalize()}:</b> {data}\n'
+            result += f'{"-"*20}\n'
+        return result
+    else:
+        return "Nenhuma entrada encontrada usando esse parâmetro de busca."
 
 def createData(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -102,9 +156,12 @@ def sendData(update: Update, context: CallbackContext) -> None:
     for key,value in chatData["query"].items():
         msg += f'<b>{key}:</b> {value}\n'
     
-    result = conexaoDB(op,table,queryData)    
-    query.edit_message_text(text=msg,parse_mode="HTML")
+    if op == "read":
+        result = conexaoDB(op,table,queryData,chatData["key"])    
+    else:
+        result = conexaoDB(op,table,queryData)    
 
+    query.edit_message_text(text=msg,parse_mode="HTML")
     inlineOp= [ [_kbbutton("Voltar",f'{chatData["table"]}_voltar')] ]
     # if result.startswith("Erro"):
         # print("Deu erro viu minha flor")
@@ -112,21 +169,14 @@ def sendData(update: Update, context: CallbackContext) -> None:
         # table_algo, igual da primeira
          #add button pra voltar pro começo da inserção
     kb = InlineKeyboardMarkup(inlineOp)
-    context.bot.send_message(chat_id=update.effective_chat.id,text=result,reply_markup=kb)
+
+    if op == "read":
+        result = queryToMessage(result)
+        enviarMensagemLonga(context.bot,update.effective_chat.id,text=result,reply_markup=kb)
+    else:
+        context.bot.send_message(chat_id=update.effective_chat.id,text=result,reply_markup=kb)
 
     return SUBMIT
-
-def isAnyEmpty(dicionarioData):
-    for x in dicionarioData.values():
-        if not x or x.strip() == '':
-            return True
-    return False
-
-def emptyToNone(data):
-    if data.strip() == '':
-        return None
-    else:
-        return data
 
 def deleteData(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -143,7 +193,7 @@ def deleteData(update: Update, context: CallbackContext) -> None:
 
     if table != "musica":
         msg = f'Digite o <b>nome</b> da tabela <b>{table}</b> que deseja deletar'
-        inlineOp = [ [_kbbutton("Enviar",f'{table}_enviar'), _kbbutton("Cancelar",'cancel') ]]
+        inlineOp = [ [_kbbutton("Enviar",f'{table}_enviar'), _kbbutton("Cancelar",f'{table}_cancel') ]]
         kb = InlineKeyboardMarkup(inlineOp)
         query.edit_message_text(text=msg,parse_mode="HTML")
         query.edit_message_reply_markup(reply_markup=kb)
@@ -151,7 +201,7 @@ def deleteData(update: Update, context: CallbackContext) -> None:
         if data["arg"] == 0:
             msg = f'Digite e envie o <b>nome</b> da música que deseja deletar'
             inlineOp = [ [_kbbutton("Próximo",f'{table}_proximo'), 
-                    _kbbutton("Cancelar",'cancel') ]]
+                    _kbbutton("Cancelar",f'{table}_cancel') ]]
             kb = InlineKeyboardMarkup(inlineOp)
             query.edit_message_text(text=msg,parse_mode="HTML")  
             query.edit_message_reply_markup(reply_markup=kb)
@@ -160,13 +210,12 @@ def deleteData(update: Update, context: CallbackContext) -> None:
             msg = f'Digite e envie o <b>nome</b> da <b>banda</b> que deseja deletar a música'
             inlineOp = [ [_kbbutton("Enviar",f'{table}_enviar'), 
                     _kbbutton("Anterior",f'{table}_anterior'),
-                    _kbbutton("Cancelar",'cancel') ]]
+                    _kbbutton("Cancelar",f'{table}_cancel') ]]
             kb = InlineKeyboardMarkup(inlineOp)
             query.edit_message_text(text=msg,parse_mode="HTML")
             query.edit_message_reply_markup(reply_markup=kb)
 
     return DELETE
-
 
 def receiveDeleteData(update: Update, context: CallbackContext) -> None:
     data = context.chat_data
@@ -181,7 +230,72 @@ def receiveDeleteData(update: Update, context: CallbackContext) -> None:
             data["query"]["banda"] = update.message.text
     return DELETE
 
-def conexaoDB(operation, tablename, data):
+def whichSelectData(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    query.answer()
+    data = context.chat_data
+    data.clear()
+    table,operation = query.data.split("_")
+    # table = query.data.split("_")[0] if "_" in query.data else query.data
+    # operation = query.data.split("_")[1] if "_" in query.data else query.data NONONONNNO
+    data["operation"] = operation if operation in ['read'] else data["operation"]
+
+    data["table"] = table
+    data["query"] = {}
+    msg = f'Procurar em <b>{table}</b> por:'
+
+    op = []
+    for k,v in infoSelectButtons()[table].items():
+        op.append([_kbbutton(v,f'{table}_{k}_prox')])        
+    op.append([_kbbutton("Voltar",f'{table}_cancel')])
+    query.edit_message_text(text=msg,parse_mode="HTML")
+    query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(op))
+    return SELECT
+
+def infoSelectButtons():
+    info = {
+        "grupomusical":{
+            "nome": "Nome do Grupo",
+            "origem": "Origem do Grupo"
+        },
+        "musica":{
+            "nome": "Nome da Música",
+            "genero": "Gênero da Música",
+            "banda": "Banda"
+        },
+        "playlist":{
+            "nome": "Nome da Playlist",
+            "hora": "Hora de Início",
+            "associada": "Nome da Playlist para ver as músicas associadas a ela"
+        }
+    }
+    return info
+    
+
+def selectData(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    query.answer()
+    data = context.chat_data
+    table = data["table"]
+    _, key, _ = query.data.split("_")
+    data["key"] = key  #TODO: key eh generico de mais, where seria possivel
+    info = infoSelectButtons()[table]
+    msg = f'Entre com <b>{info[key]}</b>.\nEnvie para salvar. Re-envie pra sobreescrever.'
+    inlineOp = [[_kbbutton("Enviar",f'{table}_enviar'),_kbbutton("Cancelar",f'{table}_voltar')]]
+    query.edit_message_text(text=msg, parse_mode="HTML")
+    query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(inlineOp))
+    return SELECT
+
+def receiveSelectData(update: Update, context: CallbackContext) -> None:
+    data = context.chat_data
+    if "key" in data.keys():
+        if "query" not in data.keys():
+            data["query"] = {}
+        data["query"]["nome"] = update.message.text
+        data["query"]["read"] = data["key"]
+    return SELECT
+
+def conexaoDB(operation, tablename, data, readData=None):
     result = None    
     conn = crudDB.Conexao()
     cur = conn.cur
@@ -212,7 +326,13 @@ def conexaoDB(operation, tablename, data):
                     return "Erro: Não foi inserido o nome do grupo que será deletado!"
                 result = crudDB.GrupoMusical(cur).deleteGrupoMusical(nome) 
             elif operation == 'read':
-                pass
+                if isAnyEmpty(data):
+                    conn.close()
+                    return "Erro: Não foi inserido o nome do grupo que será deletado!"
+                if readData == "nome":
+                    result = crudDB.GrupoMusical(cur).readGrupoMusical(data["nome"])
+                elif readData == "origem":
+                    result = crudDB.GrupoMusical(cur).readGrupoMusicalOrigem(data["nome"])
         except :
             return "Erro: Os dados não foram inseridos corretamente!"
     elif tablename == 'musica':
@@ -254,16 +374,21 @@ def conexaoDB(operation, tablename, data):
                 return "Erro: Os dados numéricos não foram inseridos adequadamente"
             result = crudDB.Musica(cur).updateMusica(where,nome,ano,duracao,plays,genero,nomeBanda)
         elif operation == 'delete':
-            #TODO: Pedir também o nome da banda            
             if isAnyEmpty(data):
                 conn.close()
                 return "Erro: Não foi inserido o nome da música que será deletada!"
             banda = emptyToNone(data["banda"])
             result = crudDB.Musica(cur).deleteMusica(nome,banda) 
         elif operation == 'read':
-            pass            
-
-        
+            if isAnyEmpty(data):
+                conn.close()
+                return "Erro: Não foi inserido o nome do grupo que será deletado!"
+            if readData == "nome":
+                result = crudDB.Musica(cur).readMusica(data["nome"])
+            elif readData == "genero":
+                result = crudDB.Musica(cur).readMusicaGenero(data["nome"])  
+            elif readData == "banda":
+                result = crudDB.Musica(cur).readMusicaGrupoMusical(data["nome"])                      
     elif tablename == 'playlist':
         try:
             nome = emptyToNone(data["nome"])
@@ -297,9 +422,16 @@ def conexaoDB(operation, tablename, data):
                     return "Erro: Não foi inserido o nome da playlist que será deletada!"
                 result = crudDB.Playlist(cur).deletePlaylist(nome)
             elif operation == 'read':
-                pass
+                if isAnyEmpty(data):
+                    conn.close()
+                    return "Erro: Não foi inserido o nome do grupo que será deletado!"
+                if readData == "nome":
+                    result = crudDB.Playlist(cur).readPlaylist(data["nome"])
+                elif readData == "hora":
+                    result = crudDB.Playlist(cur).readPlaylistHoraInicio(data["nome"]) 
+                elif readData == "associada":
+                    result = crudDB.PlaylistCompostaPorMusica(cur).readPlaylistMusicasAssociadas(data["nome"]) 
         except Exception:
             result = "Erro: Os dados não foram inseridos corretamente!"
-
     conn.close()
     return result

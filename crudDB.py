@@ -18,24 +18,22 @@ class GrupoMusical():
             return("Erro: Erro ao cadastrar grupo musical")
 
     def readGrupoMusical(self, name):
-        commandString = "SELECT * FROM grupomusical WHERE nome = %s LIMIT 1;"
+        colunas = ["Nome","Origem","Biografia"]
+        commandString = "SELECT nome,origem,biografia FROM grupomusical WHERE nome = %s ORDER BY nome ASC;"
         try:
             self.cur.execute(commandString, (name, ))
             query = self.cur.fetchall()
-            # print("ID Grupo Musical: ", query[0][0])
-            # print("Nome: ", query[0][1])
-            # print("Biography: ", query[0][2])
-            # print("Origem: ", query[0][3])
-            return(query)
+            return((colunas,query))
         except:
             return("Erro: Grupo musical não encontrado")
 
     def readGrupoMusicalOrigem(self, origin):
-        commandString = "SELECT * FROM grupomusical WHERE origem = %s;"
+        colunas = ["Nome","Origem","Biografia"]
+        commandString = "SELECT nome,biografia,origem FROM grupomusical WHERE origem = %s ORDER BY nome ASC;"
         try:
             self.cur.execute(commandString, (origin, ))
             query = self.cur.fetchall()
-            return(query)
+            return((colunas,query))
         except:
             return("Erro: Grupo musical não encontrado")
 
@@ -87,27 +85,24 @@ class Playlist():
             return("Erro: Erro na criacao da Playlist")
 
     def readPlaylist(self, name):
-        commandString = "SELECT * FROM playlist WHERE nome = %s LIMIT 1;"
+        colunas = ["Playlist","Descrição","Hora de Início"]
+        commandString = "SELECT nome,descricao,horainicio FROM playlist WHERE nome = %s;"
         try:
             self.cur.execute(commandString, (name, ))
             query = self.cur.fetchall()
-            # print("Playlist encontrada!")
-            # print("IdPlaylist: ", query[0][0])
-            # print("nome: ", query[0][1])
-            # print("Descricao: ", query[0][2])
-            # print("Hora Inicio: ", query[0][3])
-            return(query)
+            return((colunas,query))
         except:
             return("Erro: Playlist não encontrada")
 
     def readPlaylistHoraInicio(self, startTime):
-        commandString = "SELECT * FROM playlist WHERE horainicio = %s LIMIT 1;"
+        colunas = ["Hora de Início","Playlist","Descrição"]
+        commandString = "SELECT horainicio,nome,descricao FROM playlist WHERE horainicio = %s;"
         try:
             self.cur.execute(commandString, (startTime, ))
             query = self.cur.fetchall()
-            return(query)
+            return((colunas,query))
         except:
-            return("Erro: Playlist não econtrada")
+            return("Erro: Playlist não encontrada")
 
     def updatePlaylist(self, where, newName, newBio, newStarTime):
         # commandString = "UPDATE playlist SET nome = %s, descricao = %s, horainicio = %s WHERE nome = %s;"
@@ -164,47 +159,57 @@ class Musica():
             return("Erro: Grupo musical não encontrado")
 
     def readMusica(self, name):
-        commandString = "SELECT * FROM musica WHERE nome = %s LIMIT 1;"
+        colunas = ["Banda","Música","Ano","Duração(segundos)","Plays","Gênero"]
+        commandString = """
+        SELECT grupomusical.nome,musica.nome,ano,duracaosegundos,plays,genero 
+        FROM musica
+            inner join grupomusical 
+                on musica.fk_grupomusical_idgrupomusical = grupomusical.idgrupomusical
+        WHERE musica.nome = %s
+        ORDER BY grupomusical.nome ASC;
+        """
         try:
             self.cur.execute(commandString, (name, ))
             query = self.cur.fetchall()
-            # print("idMusica: ", query[0][0])
-            # print("nomeMusica: ", query[0][1])
-            # print("anoMusica: ", query[0][2])
-            # print("duracaoMusica: ", query[0][3])
-            # print("numero de Plays: ", query[0][4])
-            # print("genero Musical: ", query[0][5])
-            # print("idGrupoMusical: ", query[0][6])
-            return(query)
+            return((colunas,query))
         except:
             return("Erro: Musica não encontrada")
 
     def readMusicaGenero(self, genre):
-        commandString = "SELECT * FROM musica WHERE genero = %s;"
+        colunas = ["Gênero","Banda","Música","Ano","Duração(segundos)","Plays"]
+        commandString = """
+        SELECT genero,grupomusical.nome,musica.nome,ano,duracaosegundos,plays 
+        FROM musica
+            inner join grupomusical 
+                on musica.fk_grupomusical_idgrupomusical = grupomusical.idgrupomusical
+        WHERE musica.genero = %s
+        ORDER BY musica.genero ASC;
+        """
         try:
             self.cur.execute(commandString, (genre, ))
             query = self.cur.fetchall()
-            return(query)
+            return((colunas,query))
         except:
             return("Erro: Musica não encontrada")
 
     def readMusicaGrupoMusical(self, nameGrupoMusical):
-        commandString = "SELECT * FROM musica WHERE fk_grupomusical_idgrupomusical = %s;"
-        commandStringGrupoMusical = "SELECT * FROM grupomusical WHERE nome = %s LIMIT 1;"
+        colunas = ["Banda","Música","Ano","Duração(segundos)","Plays","Gênero"]
+        commandString = """
+        select grupomusical.nome,musica.nome,ano,duracaosegundos,plays,genero 
+        from musica
+        inner join grupomusical 
+        on musica.fk_grupomusical_idgrupomusical = grupomusical.idgrupomusical
+        where grupomusical.nome = %s
+        order by grupomusical.nome ASC;
+        """        
         try:
-            self.cur.execute(commandStringGrupoMusical, (nameGrupoMusical, ))
+            self.cur.execute(commandString, (nameGrupoMusical, ))
             query = self.cur.fetchall()
-            idGrupoMusical = query[0][0]
-            try:
-                self.cur.execute(commandString, (idGrupoMusical, ))
-                query = self.cur.fetchall()
-                return(query)
-            except:
-                return("Erro: Musica não encontrada")
-        except:
-            return("Erro: Grupo Musical não encontrado")
-
-
+            return((colunas,query))
+        except Exception as e:
+            print(e)
+            return("Erro: Musica não encontrada")
+    
     def updateMusica(self, where, newName, newYear, newDurationSec, newPlays, newGenre, nameGrupoMusical):
         # commandString = "UPDATE musica SET nome = %s, ano = %s, duracaosegundos = %s, plays = %s, genero = %s, fk_grupomusical_idgrupomusical = %s WHERE nome = %s;"
         commandStringGrupoMusical = "SELECT * FROM grupomusical WHERE nome = %s LIMIT 1;"
@@ -262,7 +267,6 @@ class Musica():
         except:
             return("Erro: Musica não encontrada")
 
-
 class PlaylistCompostaPorMusica():
     def __init__(self, cur):
         self.cur = cur
@@ -286,16 +290,23 @@ class PlaylistCompostaPorMusica():
         except:
             return("Erro: Musica ou Playlist não encontrado")
 
-    def readPlaylistCompostaPorMusica(self, idPlaylist):
-        commandString = "SELECT * FROM playlistcompostapormusica WHERE fk_playlist_idplaylist = %s;"
+    def readPlaylistMusicasAssociadas(self,nomePlaylist):
+        colunas = ["Playlist","Música","Banda"]
+        commandString = """
+        SELECT p.nome, m.nome, g.nome FROM playlist p
+        LEFT JOIN compostapor2 c ON c.fk_playlist_idplaylist = p.idplaylist
+        LEFT JOIN musica m ON m.idmusica = c.fk_musica_idmusica
+        LEFT JOIN grupomusical g ON g.idgrupomusical = m.fk_grupomusical_idgrupomusical
+        WHERE p.nome = %s
+        ORDER BY p.nome, m.nome ASC;
+        """
         try:
-            self.cur.execute(commandString, idPlaylist)
+            self.cur.execute(commandString, (nomePlaylist,))
             query = self.cur.fetchall()
-            # for a in query:
-            #     print(a)
-            return(query)
-        except:
-            return("Erro: Playlist não encontrada")
+            return((colunas,query))
+        except Exception as e:
+            print(e)
+
     def updatePlaylistCompostaPorMusica(self, idPlaylist, idMusic, newIdPlaylist, newIdMusic):
         commandString = "UPDATE playlistcompostapormusica SET fk_playlist_idplaylist = %s, fk_musica_idmusica = %s WHERE fk_playlist_idplaylist = %s AND fk_musica_idmusica = '%s';"
         commandString = """UPDATE playlistcompostapormusica SET 
@@ -347,7 +358,8 @@ class Conexao():
         self._conn.close()
 
 if __name__ == "__main__":
+    #Debugson Area
     a = Conexao()
     b = a.cur
     gm = GrupoMusical(b)
-    print(gm.deleteGrupoMusical("Lexuss 210"))
+    print(GrupoMusical(b).readGrupoMusical("Salve"))

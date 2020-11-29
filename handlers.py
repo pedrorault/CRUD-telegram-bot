@@ -84,15 +84,15 @@ conv_handler = ConversationHandler(
             CallbackQueryHandler(crudInline, pattern=f'^grupomusical$'),
         ],
         SECOND: [
-            # CallbackQueryHandler(modifyData, pattern=f'^(.*)_(create|read|update|delete)$'),  
-            # CallbackQueryHandler(createData, pattern=f'^(.*)_create$'),  
             CallbackQueryHandler(createData, pattern=f'^(.*)_(create|update)$'),  
             CallbackQueryHandler(tablesInline, pattern=f'^voltar$'),  
-            CallbackQueryHandler(deleteData, pattern=f'^(.*)_delete$'),   
+            CallbackQueryHandler(deleteData, pattern=f'^(.*)_delete$'), 
+            CallbackQueryHandler(whichSelectData, pattern=f'^(.*)_read$'),   
+              
         ],
         VALUE1: [
             MessageHandler(Filters.regex(".+"),receiveCreateData),
-            CallbackQueryHandler(crudInline, pattern=f'^(.*)_cancel$'), #TODO: trocar pra crud,
+            CallbackQueryHandler(crudInline, pattern=f'^(.*)_cancel$'),
             CallbackQueryHandler(createData, pattern=f'^(.*)_proximo$'),
             CallbackQueryHandler(createData, pattern=f'^(.*)_anterior$'),
             CallbackQueryHandler(sendData, pattern=f'^(.*)_enviar$'),
@@ -105,11 +105,18 @@ conv_handler = ConversationHandler(
             # CallbackQueryHandler(crudInline, pattern=f'^(.*)_cancel$'), TODO: Sair, _sair
         ],
         DELETE:[
-            CallbackQueryHandler(crudInline, pattern=f'^cancel$'),
+            CallbackQueryHandler(crudInline, pattern=f'^(.*)cancel$'),
             CallbackQueryHandler(sendData, pattern=f'^(.*)_enviar$'),
             CallbackQueryHandler(deleteData, pattern=f'^(.*)_proximo$'),
             CallbackQueryHandler(deleteData, pattern=f'^(.*)_anterior$'),
             MessageHandler(Filters.regex(".+"),receiveDeleteData)            
+        ],
+        SELECT: [
+            CallbackQueryHandler(crudInline, pattern=f'^(.*)_cancel$'),
+            CallbackQueryHandler(sendData, pattern=f'^(.*)_enviar$'),
+            CallbackQueryHandler(selectData, pattern=f'^(.*)_prox$'),
+            CallbackQueryHandler(whichSelectData, pattern=f'^(.*)_voltar$'),
+            MessageHandler(Filters.regex(".+"),receiveSelectData)  
         ]
     },
     
