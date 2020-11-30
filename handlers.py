@@ -9,7 +9,7 @@ if not os.getenv('PWBDTELEGRAM'):
     load_dotenv()
 
 #STATES
-AUTH, FIRST, SECOND, THIRD, VALUE1 = range(5)
+AUTH, FIRST, SECOND, THIRD, CREATE = range(5)
 
 #callback_data
 #Direto nas coisas
@@ -61,8 +61,8 @@ def crudInline(update: Update, context: CallbackContext) -> None:
     msg = f'Escolha uma das opções para fazer alterações na <b>Tabela {table}</b> do banco de dados.'
 
     inlineOp = [ 
-        [_kbbutton("Create",f'{table}_create'),_kbbutton("Read",f'{table}_read') ],
-        [_kbbutton("Update",f'{table}_update'),_kbbutton("Delete",f'{table}_delete')],
+        [_kbbutton("Criar",f'{table}_create'),_kbbutton("Buscar",f'{table}_read') ],
+        [_kbbutton("Atualizar",f'{table}_update'),_kbbutton("Deletar",f'{table}_delete')],
         [_kbbutton("Voltar",'voltar')]
     ]
     kbLayout = InlineKeyboardMarkup(inlineOp)
@@ -90,7 +90,7 @@ conv_handler = ConversationHandler(
             CallbackQueryHandler(whichSelectData, pattern=f'^(.*)_read$'),   
               
         ],
-        VALUE1: [
+        CREATE: [
             MessageHandler(Filters.regex(".+"),receiveCreateData),
             CallbackQueryHandler(crudInline, pattern=f'^(.*)_cancel$'),
             CallbackQueryHandler(createData, pattern=f'^(.*)_proximo$'),
@@ -116,7 +116,9 @@ conv_handler = ConversationHandler(
             CallbackQueryHandler(sendData, pattern=f'^(.*)_enviar$'),
             CallbackQueryHandler(selectData, pattern=f'^(.*)_prox$'),
             CallbackQueryHandler(whichSelectData, pattern=f'^(.*)_voltar$'),
-            MessageHandler(Filters.regex(".+"),receiveSelectData)  
+            MessageHandler(Filters.regex(".+"),receiveSelectData),
+            CallbackQueryHandler(sendData, pattern=f'^(.*)_completa$'),
+
         ]
     },
     
