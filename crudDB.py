@@ -177,9 +177,9 @@ class Musica():
             idGrupoMusical = query[0][0]
             try:
                 self.cur.execute(commandString, (name, year, durationSec, plays, genre, idGrupoMusical))
-                return("Musica adicionada com Sucesso!")
+                return("Música adicionada com Sucesso!")
             except:
-                return("Erro: Erro ao adicionar Musica")
+                return("Erro: Erro ao adicionar Música")
         except Exception as e:
             print (e)
             return("Erro: Grupo musical não encontrado")
@@ -199,7 +199,7 @@ class Musica():
             query = self.cur.fetchall()
             return((colunas,query))
         except:
-            return("Erro: Musica não encontrada")
+            return("Erro: Música não encontrada")
 
     def readMusicaGenero(self, genre):
         colunas = ["Gênero","Banda","Música","Ano","Duração(segundos)","Plays"]
@@ -216,7 +216,7 @@ class Musica():
             query = self.cur.fetchall()
             return((colunas,query))
         except:
-            return("Erro: Musica não encontrada")
+            return("Erro: Música não encontrada")
 
     def readMusicaGrupoMusical(self, nameGrupoMusical):
         colunas = ["Banda","Música","Ano","Duração(segundos)","Plays","Gênero"]
@@ -234,7 +234,7 @@ class Musica():
             return((colunas,query))
         except Exception as e:
             print(e)
-            return("Erro: Musica não encontrada")
+            return("Erro: Música não encontrada")
     
     def readMusicaTodos(self):
         colunas = ["Banda","Música","Ano","Duração(segundos)","Plays","Gênero"]
@@ -283,11 +283,11 @@ class Musica():
                 {"nome":newName, "ano":newYear, "duracao":newDurationSec, 
                 "plays":newPlays, "genero":newGenre, "fk":idGrupoMusical, "where":where})                
                 if(self.cur.statusmessage.endswith("1")):
-                    return("Musica atualizada com sucesso")
+                    return("Música atualizada com sucesso")
                 else:
-                    return("Erro: Musica não encontrada")
+                    return("Erro: Música não encontrada")
             except:
-                return("Erro: Musica não encontrada")
+                return("Erro: Música não encontrada")
         except:
             return("Erro: Grupo Musical não encontrado")
 
@@ -307,7 +307,7 @@ class Musica():
             else:
                 return("Erro: Música ou banda não encontrada!")
         except:
-            return("Erro: Musica não encontrada")
+            return("Erro: Música não encontrada")
 
 class PlaylistCompostaPorMusica():
     def __init__(self, cur):
@@ -330,7 +330,7 @@ class PlaylistCompostaPorMusica():
             except:
                 return("Erro: Falha ao atualzar")
         except:
-            return("Erro: Musica ou Playlist não encontrado")
+            return("Erro: Música ou Playlist não encontrado")
 
     def readPlaylistMusicasAssociadas(self,nomePlaylist):
         colunas = ["Playlist","Música","Banda"]
