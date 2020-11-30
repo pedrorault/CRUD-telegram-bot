@@ -258,9 +258,11 @@ def whichSelectData(update: Update, context: CallbackContext) -> None:
     data = context.chat_data
     data.clear()
     table,operation = query.data.split("_")
-    # table = query.data.split("_")[0] if "_" in query.data else query.data
-    # operation = query.data.split("_")[1] if "_" in query.data else query.data NONONONNNO
-    data["operation"] = operation if operation in ['read'] else data["operation"]
+    if operation == "read":
+        data["operation"] = operation
+    elif "operation" not in data.keys() or operation == "voltar":
+        data["operation"] = "read"
+  
 
     data["table"] = table
     data["query"] = {}
